@@ -8,7 +8,7 @@ import {Arrows} from "./Arrows.js";
 import {Path} from "./Path.js";
 import {levels} from "./levels.js";
 
-let level_number = 8;
+let level_number = 1;
 let level_data = null;
 let audio = new AudioContext();
 let canvas = document.querySelector("#canvas");
