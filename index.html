@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+		<title>BrickShifter</title>
+		<meta name="description" content="A block shifting and matching game">
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<link rel="stylesheet" href="styles.css">
+		<script type="module" src="./src/main.js"></script>
+	</head>
+	<body>
+		<canvas id="canvas" oncontextmenu="return false;"></canvas>
+		<div class="label" id="level_label" oncontextmenu="return false;">
+			Level: 0
+		</div>
+		<div class="label" id="dist_label" oncontextmenu="return false;">
+			Distance to goal: 0
+		</div>
+		<div class="label" id="level_complete_label"
+			 oncontextmenu="return false;">
+			<div>Level completed!</div>
+			<button id="next_button">Next</button>
+		</div>
+		<div class="label" id="toolbar">
+			<button id="retry_button">
+				<img src="./gfx/retry.png" alt="Retry Level">
+			</button>
+		</div>
+	</body>
+</html>
