@@ -1,12 +1,6 @@
+import {smoother_lerp} from "./utils.js";
+
 const duration = 500;
-
-function lerp(a, b, t) {
-    return a + t * (b - a);
-}
-
-function smoother_lerp(a, b, t) {
-    return lerp(a, b, 6 * t**5 - 15 * t**4 + 10 * t**3);
-}
 
 export class Swapper {
     constructor() {

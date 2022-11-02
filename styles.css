@@ -85,9 +85,11 @@ button {
 #toolbar {
 	left: 1rem;
 	bottom: 1rem;
+	display: flex;
+	flex-direction: row;
 }
 
-#retry_button {
+#toolbar button {
 	display: block;
 	border: none;
 	padding: 0;
@@ -95,11 +97,11 @@ button {
 	opacity: 0.25;
 }
 
-#retry_button:hover {
+#toolbar button:hover {
 	opacity: 1;
 }
 
-#retry_button img {
+#toolbar button img {
 	display: block;
 }
 

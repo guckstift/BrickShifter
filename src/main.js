@@ -7,9 +7,9 @@ import {Particles} from "./Particles.js";
 import {Arrows} from "./Arrows.js";
 import {Path} from "./Path.js";
 import {levels} from "./levels.js";
+import {Checkpoint} from "./Checkpoint.js";
 
-let level_number = 1;
-let level_data = null;
+let level_number = 8;
 let audio = new AudioContext();
 let canvas = document.querySelector("#canvas");
 let level_label = document.querySelector("#level_label");
@@ -17,6 +17,7 @@ let dist_label = document.querySelector("#dist_label");
 let level_complete_label = document.querySelector("#level_complete_label");
 let next_button = document.querySelector("#next_button");
 let retry_button = document.querySelector("#retry_button");
+let goback_button = document.querySelector("#goback_button");
 let ctx = canvas.getContext("2d");
 let img_blocks = await load_image("./gfx/blocks.png");
 let img_picker = await load_image("./gfx/picker.png");
@@ -41,17 +42,20 @@ let mouse_start_x = 0;
 let mouse_start_y = 0;
 let panning = false;
 let level_completed = false;
+let checkpoints = [];
+let new_checkpoint = null;
 
 canvas.onmousedown = mousedown;
 window.onmouseup = mouseup;
 window.onmousemove = mousemove;
 next_button.onclick = nextclick;
 retry_button.onclick = retryclick;
+goback_button.onclick = gobackclick;
 start_level();
 requestAnimationFrame(frame);
 
 function start_level() {
-    level_data = levels[level_number - 1];
+    let level_data = levels[level_number - 1];
 
     map = new Map(
         level_data.seed,
@@ -60,6 +64,7 @@ function start_level() {
     );
 
     path = new Path(map);
+    window.path = path;
     level_label.innerHTML = "Level: " + level_number;
     level_label.style.setProperty("--text-color", level_data.text_color);
     level_label.style.setProperty("--shadow-color", level_data.shadow_color);
@@ -89,6 +94,17 @@ function retryclick(e) {
     }
 }
 
+function gobackclick(e) {
+    e.stopPropagation();
+
+    let checkpoint = checkpoints.pop();
+
+    if(checkpoint) {
+        checkpoint.restore();
+        new_checkpoint = checkpoint;
+    }
+}
+
 function next_level() {
     level_complete_label.classList.remove("visible");
     level_number ++;
@@ -96,7 +112,14 @@ function next_level() {
 }
 
 function update_dist_label() {
-    dist_label.innerHTML = "Distance to goal: " + path.manhatten();
+    let dist = path.manhatten();
+
+    if(dist === 0) {
+        dist_label.innerHTML = "Goal reached!";
+    }
+    else {
+        dist_label.innerHTML = "Distance to goal: " + path.manhatten();
+    }
 }
 
 function frame() {
@@ -108,6 +131,8 @@ function frame() {
     map.draw(ctx, img_blocks, camera);
     path.draw(ctx, img_vines, camera);
     swapper.draw(ctx, img_blocks, camera);
+    checkpoints.forEach(cp => cp.draw(ctx, camera, false));
+    if(new_checkpoint) new_checkpoint.draw(ctx, camera, true);
     particles.draw(ctx, img_particles, camera);
     selector.draw(ctx, img_selector, camera);
     picker.draw(ctx, img_picker, camera);
@@ -152,8 +177,18 @@ async function do_swap(pos1, pos2, tile1, tile2, reached1, reached2) {
     if(path.update()) {
         complete_level();
     }
-    else {
-        dist_label.innerHTML = "Distance to goal: " + path.manhatten();
+
+    update_dist_label();
+
+    if(new_checkpoint) {
+        checkpoints.push(new_checkpoint);
+        new_checkpoint = null;
+    }
+
+    let cp = path.fetch_new_checkpoint();
+
+    if(cp) {
+        new_checkpoint = new Checkpoint(map, path, cp, camera);
     }
 }
 

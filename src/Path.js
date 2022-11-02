@@ -3,8 +3,10 @@ import {PrioQueue} from "./PrioQueue.js";
 export class Path {
     constructor(map) {
         this.map = map;
-        this.path = [this.map.start];
+        this.segments = [this.map.start];
         this.best_pos = this.map.start;
+        this.reached_checkpoints = [];
+        this.new_checkpoint = null;
     }
 
     manhatten() {
@@ -17,8 +19,8 @@ export class Path {
     draw(ctx, img, camera) {
         let last = null;
 
-        for(let i=0; i < this.path.length; i++) {
-            let [tx, ty] = this.path[i];
+        for(let i=0; i < this.segments.length; i++) {
+            let [tx, ty] = this.segments[i];
             let x = Math.floor(tx * 64 - camera.x);
             let y = Math.floor(ty * 64 - camera.y);
 
@@ -33,10 +35,10 @@ export class Path {
             let j = 11;
 
             if(i === 0) {
-                let next = this.path[i + 1];
+                let next = this.segments[i + 1];
                 let [nx, ny] = next || [0,0];
 
-                if(i === this.path.length - 1) {
+                if(i === this.segments.length - 1) {
                     j = 6;
                 }
                 else if(nx > tx) {
@@ -52,7 +54,7 @@ export class Path {
                     j = 10;
                 }
             }
-            else if(i === this.path.length - 1) {
+            else if(i === this.segments.length - 1) {
                 let [lx, ly] = last;
 
                 if(lx > tx) {
@@ -70,7 +72,7 @@ export class Path {
             }
             else {
                 let [lx, ly] = last;
-                let next = this.path[i + 1];
+                let next = this.segments[i + 1];
                 let [nx, ny] = next || [0,0];
 
                 if(lx === nx) {
@@ -167,9 +169,28 @@ export class Path {
             path.unshift([cx, cy]);
         }
 
-        this.path = path;
+        this.segments = path;
         this.best_pos = best_pos;
 
+        this.segments.forEach(segment => {
+            let id = this.map.get_checkpoint_at(...segment);
+
+            if(id > 0 && !this.reached_checkpoints.includes(id)) {
+                this.reached_checkpoints.push(id);
+                this.new_checkpoint = segment;
+            }
+        });
+
         return reached_goal;
+    }
+
+    fetch_new_checkpoint() {
+        if(this.new_checkpoint) {
+            let cp = this.new_checkpoint;
+            this.new_checkpoint = null;
+            return cp;
+        }
+
+        return null;
     }
 }

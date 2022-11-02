@@ -1,8 +1,6 @@
-let rand_state = 0;
+import {is_vec_in_array} from "./utils.js";
 
-function is_vec_in_array(a, v) {
-    return a.some(u => u[0] === v[0] && u[1] === v[1]);
-}
+let rand_state = 0;
 
 function randi()
 {
@@ -77,13 +75,16 @@ export class Map {
     gen_maze(width, height) {
         let maze_width = Math.floor(width / 7);
         let maze_height = Math.floor(height / 7);
-        let maze = Array(maze_height)
+        let maze = Array(maze_height);
+        let corners = Array(maze_height);
 
         for(let y=0; y < maze_height; y++) {
             maze[y] = [];
+            corners[y] = [];
 
             for(let x=0; x < maze_width; x++) {
                 maze[y].push(0);
+                corners[y].push(0);
             }
         }
 
@@ -122,31 +123,63 @@ export class Map {
             }
         }
 
+        let next_checkpoint = 1;
+
+        // mark corners
+        for(let y=0; y < maze_height; y++) {
+            for(let x=0; x < maze_width; x++) {
+                let cur = maze[y][x];
+                let left = x-1 < 0 ? 0 : maze[y][x-1];
+                let right = x+1 >= maze_width ? 0 : maze[y][x+1];
+                let up = y-1 < 0 ? 0 : maze[y-1][x];
+                let down = y+1 >= maze_width ? 0 : maze[y+1][x];
+
+                if(cur === 1) {
+                    if(left !== right || up !== down) {
+                        corners[y][x] = next_checkpoint;
+                        next_checkpoint ++;
+                    }
+                }
+            }
+        }
+
+        this.corners = corners;
+
         for(let y=0; y < maze_height; y++) {
             for(let x=0; x < maze_width; x++) {
                 if(maze[y][x] === 0) {
                     this.fill_rect(1+x*7, 1+y*7, 7, 7, 0);
 
                     for(let dx=0; dx<7; dx++) {
-                        if(y > 0 && maze[y-1][x] === 1) {
+                        if(y > 0 && maze[y-1][x] > 0) {
                             this.set_tile(1+x*7+dx, 1+y*7, 15);
                         }
-                        if(y < maze_height-1 && maze[y+1][x] === 1) {
+                        if(y < maze_height-1 && maze[y+1][x] > 0) {
                             this.set_tile(1+x*7+dx, 7+y*7, 15);
                         }
                     }
 
                     for(let dy=0; dy<7; dy++) {
-                        if(x > 0 && maze[y][x-1] === 1) {
+                        if(x > 0 && maze[y][x-1] > 0) {
                             this.set_tile(1+x*7, 1+y*7+dy, 15);
                         }
-                        if(x < maze_width-1 && maze[y][x+1] === 1) {
+                        if(x < maze_width-1 && maze[y][x+1] > 0) {
                             this.set_tile(7+x*7, 1+y*7+dy, 15);
                         }
                     }
                 }
             }
         }
+    }
+
+    get_checkpoint_at(x, y) {
+        if(this.corners && this.tilepos_in_map(x, y)) {
+            let cx = Math.floor((x - 1) / 7);
+            let cy = Math.floor((y - 1) / 7);
+            return this.corners[cy][cx];
+        }
+
+        return 0;
     }
 
     euclidean_dist(fromx, fromy) {
@@ -256,7 +289,9 @@ export class Map {
                 }
 
                 ctx.drawImage(
-                    img, sx, sy, 64, 64, Math.floor(dx), Math.floor(dy), 64, 64
+                    img,
+                    sx, sy, 64, 64,
+                    Math.floor(dx), Math.floor(dy), 64, 64,
                 );
             }
         }
