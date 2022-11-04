@@ -1,14 +1,16 @@
 import {lerp, lerp3, round_rect, smoother_lerp} from "./utils.js";
 
 export class Checkpoint {
-    constructor(map, path, pos) {
-        this.map = map;
+    constructor(path, waypoint) {
         this.path = path;
-        this.pos = pos;
-        this.map_tiles = JSON.stringify(map.tiles);
-        this.path_segments = JSON.stringify(path.segments);
-        this.best_pos = [...path.best_pos];
-        this.reached_checkpoints = [...path.reached_checkpoints];
+        this.waypoint = waypoint;
+        this.map = path.map;
+        this.maze = this.map.maze;
+        this.map_tiles = JSON.stringify(this.map.tiles);
+        this.path_segments = JSON.stringify(this.path.segments);
+        this.best_pos = [...this.path.best_pos];
+        this.unreached_waypoints = [...this.maze.unreached_waypoints];
+        this.reached_checkpoints = [...this.path.reached_checkpoints];
         this.start_time = performance.now();
     }
 
@@ -16,7 +18,9 @@ export class Checkpoint {
         this.map.tiles = JSON.parse(this.map_tiles);
         this.path.segments = JSON.parse(this.path_segments);
         this.path.best_pos = [...this.best_pos];
+        this.map.maze.unreached_waypoints = [...this.unreached_waypoints];
         this.path.reached_checkpoints = [...this.reached_checkpoints];
+        this.path.new_checkpoint = this;
     }
 
     draw(ctx, camera, isnew) {
@@ -27,8 +31,8 @@ export class Checkpoint {
         let w = 64 * scale;
         let h = 64 * scale;
         let radius = lerp(w / 2, 16, way);
-        let x = (Math.floor(this.pos[0]/7) * 7 + 4) * 64 - camera.x + 32 - w/2;
-        let y = (Math.floor(this.pos[1]/7) * 7 + 4) * 64 - camera.y + 32 - h/2;
+        let x = (this.waypoint[0] * 7 + 4) * 64 - camera.x + 32 - w/2;
+        let y = (this.waypoint[1] * 7 + 4) * 64 - camera.y + 32 - h/2;
         let color = lerp3([255,0,0], [128,255,128], way);
 
         ctx.lineWidth = 2;

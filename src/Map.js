@@ -1,34 +1,15 @@
-import {is_vec_in_array} from "./utils.js";
-
-let rand_state = 0;
-
-function randi()
-{
-    let x = rand_state + 1;
-    x *= 3141592653; // scramble with 10 first digits of PI
-    x ^= x >>> 2;    // xor with r-shift with 1. prime
-    x ^= x << 5;     // xor with l-shift with 3. prime
-    x ^= x >>> 11;   // xor with r-shift with 5. prime
-    x ^= x << 17;    // xor with l-shift with 7. prime
-    x ^= x >>> 23;   // xor with r-shift with 9. prime
-    x ^= x << 31;    // xor with l-shift with 11. prime
-    rand_state = x;
-    return x >>> 0;
-}
-
-function rand()
-{
-    return randi() / 0xFFffFFff;
-}
+import {is_vec_in_array, rand, srand} from "./utils.js";
+import {Maze} from "./Maze.js";
 
 export class Map {
     constructor(seed, width, height, tiles, dither, maze) {
         this.width = width + 2;
         this.height = height + 2;
-        this.start = maze ? [4,4] : [3,3];
-        this.goal = maze ? [this.width - 5, this.height - 5] :
-            [this.width - 4, this.height - 4];
         this.tiles = Array(height);
+        this.start = [3,3];
+        this.goal = [this.width - 4, this.height - 4];
+        this.maze = null;
+        this.next_goal = this.goal;
 
         for(let x=1; x < width + 1; x++) {
             this.set_tile(x, 0, 15);
@@ -40,7 +21,7 @@ export class Map {
             this.set_tile(width + 1, y, 15);
         }
 
-        rand_state = seed;
+        srand(seed);
 
         for(let y=1; y < height + 1; y++) {
             for(let x=1; x < width + 1; x++) {
@@ -60,6 +41,13 @@ export class Map {
             }
         }
 
+        if(maze) {
+            this.start = [4,4];
+            this.goal = [this.width - 5, this.height - 5];
+            this.maze = new Maze(Math.floor(width/7), Math.floor(height/7));
+            this.update_next_goal();
+        }
+
         for(let y = -1; y <= +1; y++) {
             for(let x = -1; x <= +1; x++) {
                 this.set_tile(this.start[0]+x, this.start[1]+y, 0);
@@ -68,103 +56,33 @@ export class Map {
         }
 
         if(maze) {
-            this.gen_maze(width, height);
-        }
-    }
+            for(let y=0; y < this.maze.height; y++) {
+                for(let x=0; x < this.maze.width; x++) {
+                    if(this.maze.maze[y][x] === 0) {
+                        this.fill_rect(1+x*7, 1+y*7, 7, 7, 0);
 
-    gen_maze(width, height) {
-        let maze_width = Math.floor(width / 7);
-        let maze_height = Math.floor(height / 7);
-        let maze = Array(maze_height);
-        let corners = Array(maze_height);
-
-        for(let y=0; y < maze_height; y++) {
-            maze[y] = [];
-            corners[y] = [];
-
-            for(let x=0; x < maze_width; x++) {
-                maze[y].push(0);
-                corners[y].push(0);
-            }
-        }
-
-        let cur = [0, 0];
-        let stack = [cur];
-        let [cx, cy] = cur;
-        maze[cy][cx] = 1;
-
-        while(stack.length) {
-            cur = stack.pop();
-            [cx, cy] = cur;
-
-            let adjs = [
-                [cx + 2, cy],
-                [cx - 2, cy],
-                [cx, cy + 2],
-                [cx, cy - 2],
-            ];
-
-            adjs = adjs.filter(adj => {
-                let [ax, ay] = adj;
-                return (
-                    ax >= 0 && ay >= 0 &&
-                    ax < maze_width && ay < maze_height &&
-                    maze[ay][ax] === 0
-                );
-            })
-
-            if(adjs.length) {
-                stack.push(cur);
-                let adj = adjs[randi() % adjs.length];
-                let [ax, ay] = adj;
-                maze[ay][ax] = 1;
-                maze[(ay+cy)/2][(ax+cx)/2] = 1;
-                stack.push(adj);
-            }
-        }
-
-        let next_checkpoint = 1;
-
-        // mark corners
-        for(let y=0; y < maze_height; y++) {
-            for(let x=0; x < maze_width; x++) {
-                let cur = maze[y][x];
-                let left = x-1 < 0 ? 0 : maze[y][x-1];
-                let right = x+1 >= maze_width ? 0 : maze[y][x+1];
-                let up = y-1 < 0 ? 0 : maze[y-1][x];
-                let down = y+1 >= maze_width ? 0 : maze[y+1][x];
-
-                if(cur === 1) {
-                    if(left !== right || up !== down) {
-                        corners[y][x] = next_checkpoint;
-                        next_checkpoint ++;
-                    }
-                }
-            }
-        }
-
-        this.corners = corners;
-
-        for(let y=0; y < maze_height; y++) {
-            for(let x=0; x < maze_width; x++) {
-                if(maze[y][x] === 0) {
-                    this.fill_rect(1+x*7, 1+y*7, 7, 7, 0);
-
-                    for(let dx=0; dx<7; dx++) {
-                        if(y > 0 && maze[y-1][x] > 0) {
-                            this.set_tile(1+x*7+dx, 1+y*7, 15);
+                        for(let dx=0; dx<7; dx++) {
+                            if(y > 0 && this.maze.maze[y-1][x] > 0) {
+                                this.set_tile(1+x*7+dx, 1+y*7, 15);
+                            }
+                            if(
+                                y < this.maze.height-1 &&
+                                this.maze.maze[y+1][x] > 0
+                            ) {
+                                this.set_tile(1+x*7+dx, 7+y*7, 15);
+                            }
                         }
-                        if(y < maze_height-1 && maze[y+1][x] > 0) {
-                            this.set_tile(1+x*7+dx, 7+y*7, 15);
-                        }
-                    }
 
-                    for(let dy=0; dy<7; dy++) {
-                        if(x > 0 && maze[y][x-1] > 0) {
-                            this.set_tile(1+x*7, 1+y*7+dy, 15);
-                        }
-                        if(x < maze_width-1 && maze[y][x+1] > 0) {
-                            this.set_tile(7+x*7, 1+y*7+dy, 15);
+                        for(let dy=0; dy<7; dy++) {
+                            if(x > 0 && this.maze.maze[y][x-1] > 0) {
+                                this.set_tile(1+x*7, 1+y*7+dy, 15);
+                            }
+                            if(
+                                x < this.maze.width-1 &&
+                                this.maze.maze[y][x+1] > 0
+                            ) {
+                                this.set_tile(7+x*7, 1+y*7+dy, 15);
+                            }
                         }
                     }
                 }
@@ -172,14 +90,29 @@ export class Map {
         }
     }
 
-    get_checkpoint_at(x, y) {
-        if(this.corners && this.tilepos_in_map(x, y)) {
+    update_next_goal() {
+        if(this.maze && this.maze.unreached_waypoints.length) {
+            let [wpx, wpy] = this.maze.unreached_waypoints[0];
+            this.next_goal = [wpx * 7 + 4, wpy * 7 + 4];
+        }
+        else {
+            this.next_goal = this.goal;
+        }
+    }
+
+    reach_waypoint_at(x, y) {
+        if(this.maze && this.tilepos_in_map(x, y)) {
             let cx = Math.floor((x - 1) / 7);
             let cy = Math.floor((y - 1) / 7);
-            return this.corners[cy][cx];
+            let waypoint = [cx,cy];
+
+            if(this.maze.reach_waypoint_at(cx, cy)) {
+                this.update_next_goal();
+                return waypoint;
+            }
         }
 
-        return 0;
+        return null;
     }
 
     euclidean_dist(fromx, fromy) {

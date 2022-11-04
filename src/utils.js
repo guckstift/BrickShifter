@@ -1,3 +1,28 @@
+let rand_state = 0;
+
+export function srand(s) {
+    rand_state = s;
+}
+
+export function randi()
+{
+    let x = rand_state + 1;
+    x *= 3141592653; // scramble with 10 first digits of PI
+    x ^= x >>> 2;    // xor with r-shift with 1. prime
+    x ^= x << 5;     // xor with l-shift with 3. prime
+    x ^= x >>> 11;   // xor with r-shift with 5. prime
+    x ^= x << 17;    // xor with l-shift with 7. prime
+    x ^= x >>> 23;   // xor with r-shift with 9. prime
+    x ^= x << 31;    // xor with l-shift with 11. prime
+    rand_state = x;
+    return x >>> 0;
+}
+
+export function rand()
+{
+    return randi() / 0xFFffFFff;
+}
+
 export function rand_range(min, max) {
     return min + (max - min) * Math.random();
 }

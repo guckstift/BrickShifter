@@ -7,7 +7,6 @@ import {Particles} from "./Particles.js";
 import {Arrows} from "./Arrows.js";
 import {Path} from "./Path.js";
 import {levels} from "./levels.js";
-import {Checkpoint} from "./Checkpoint.js";
 
 let level_number = 8;
 let audio = new AudioContext();
@@ -42,8 +41,6 @@ let mouse_start_x = 0;
 let mouse_start_y = 0;
 let panning = false;
 let level_completed = false;
-let checkpoints = [];
-let new_checkpoint = null;
 
 canvas.onmousedown = mousedown;
 window.onmouseup = mouseup;
@@ -97,11 +94,8 @@ function retryclick(e) {
 function gobackclick(e) {
     e.stopPropagation();
 
-    let checkpoint = checkpoints.pop();
-
-    if(checkpoint) {
-        checkpoint.restore();
-        new_checkpoint = checkpoint;
+    if(path.reached_checkpoints.length) {
+        path.reached_checkpoints.pop().restore();
     }
 }
 
@@ -131,8 +125,8 @@ function frame() {
     map.draw(ctx, img_blocks, camera);
     path.draw(ctx, img_vines, camera);
     swapper.draw(ctx, img_blocks, camera);
-    checkpoints.forEach(cp => cp.draw(ctx, camera, false));
-    if(new_checkpoint) new_checkpoint.draw(ctx, camera, true);
+    path.reached_checkpoints.forEach(cp => cp.draw(ctx, camera, false));
+    if(path.new_checkpoint) path.new_checkpoint.draw(ctx, camera, true);
     particles.draw(ctx, img_particles, camera);
     selector.draw(ctx, img_selector, camera);
     picker.draw(ctx, img_picker, camera);
@@ -148,6 +142,12 @@ async function pop_tiles(tiles) {
         particles.start(tile, pos[0] * 64 + 32, pos[1] * 64 + 32);
         play_sound(snd_blop, rand_range(0.5, 2));
     }
+
+    if(path.update()) {
+        complete_level();
+    }
+
+    update_dist_label();
 }
 
 function pickers_adjacent() {
@@ -165,31 +165,17 @@ async function do_swap(pos1, pos2, tile1, tile2, reached1, reached2) {
     await swapper.swap(pos1, pos2, tile1, tile2);
     map.set_tile(...pos1, tile2);
     map.set_tile(...pos2, tile1);
+    let popping_tiles = [];
 
     if(reached1.length >= 3) {
-        await pop_tiles(reached1);
+        popping_tiles.push(...reached1);
     }
 
     if(reached2.length >= 3) {
-        await pop_tiles(reached2);
+        popping_tiles.push(...reached2);
     }
 
-    if(path.update()) {
-        complete_level();
-    }
-
-    update_dist_label();
-
-    if(new_checkpoint) {
-        checkpoints.push(new_checkpoint);
-        new_checkpoint = null;
-    }
-
-    let cp = path.fetch_new_checkpoint();
-
-    if(cp) {
-        new_checkpoint = new Checkpoint(map, path, cp, camera);
-    }
+    await pop_tiles(popping_tiles);
 }
 
 function try_swap() {
@@ -223,6 +209,9 @@ function mousedown(e) {
     }
     else if(e.button === 2) {
         right_mousedown(e);
+    }
+    else if(e.button === 1) {
+        pop_tiles([[picker.x, picker.y]]);
     }
 }
 

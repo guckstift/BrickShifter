@@ -1,4 +1,5 @@
 import {PrioQueue} from "./PrioQueue.js";
+import {Checkpoint} from "./Checkpoint.js";
 
 export class Path {
     constructor(map) {
@@ -105,7 +106,7 @@ export class Path {
 
     update() {
         let [sx, sy] = this.map.start;
-        let [gx, gy] = this.map.goal;
+        let [gx, gy] = this.map.next_goal;
         let costmap = Array(this.map.height);
         let pathmap = Array(this.map.height);
         let frontier = new PrioQueue();
@@ -113,15 +114,15 @@ export class Path {
         let best_pos = this.map.start;
         let reached_goal = false;
 
+        // init maps
         for(let y=0; y < this.map.height; y++) {
             costmap[y] = Array(this.map.width).fill(Infinity);
-            pathmap[y] = Array(this.map.width);
+            pathmap[y] = Array(this.map.width).fill(null);
         }
 
+        // find path towards next goal
         costmap[sy][sx] = 0;
-        pathmap[sy][sx] = null;
         frontier.push(this.map.start, 0);
-
         while(frontier.items.length) {
             let cur = frontier.pop();
             let [cx, cy] = cur;
@@ -161,36 +162,33 @@ export class Path {
             }
         }
 
+        // retrace path
         let path = [best_pos];
         let [cx, cy] = best_pos;
-
         while(cx !== sx || cy !== sy) {
             [cx, cy] = pathmap[cy][cx];
             path.unshift([cx, cy]);
+        }
+
+        if(this.new_checkpoint) {
+            let checkpoint = this.new_checkpoint;
+            this.new_checkpoint = null;
+            this.reached_checkpoints.push(checkpoint);
         }
 
         this.segments = path;
         this.best_pos = best_pos;
 
         this.segments.forEach(segment => {
-            let id = this.map.get_checkpoint_at(...segment);
+            let waypoint = this.map.reach_waypoint_at(...segment);
 
-            if(id > 0 && !this.reached_checkpoints.includes(id)) {
-                this.reached_checkpoints.push(id);
-                this.new_checkpoint = segment;
+            if(waypoint) {
+                this.new_checkpoint = new Checkpoint(this, waypoint);
             }
         });
 
-        return reached_goal;
-    }
-
-    fetch_new_checkpoint() {
-        if(this.new_checkpoint) {
-            let cp = this.new_checkpoint;
-            this.new_checkpoint = null;
-            return cp;
-        }
-
-        return null;
+        return (
+            reached_goal && gx === this.map.goal[0] && gy === this.map.goal[1]
+        );
     }
 }
