@@ -77,3 +77,12 @@ export function round_rect(ctx, r, x, y, w, h) {
     ctx.closePath();
     ctx.stroke();
 }
+
+export function get_adjs(cx, cy) {
+    return [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+    ];
+}

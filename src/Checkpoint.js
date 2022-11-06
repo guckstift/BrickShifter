@@ -7,7 +7,7 @@ export class Checkpoint {
         this.map = path.map;
         this.maze = this.map.maze;
         this.map_tiles = JSON.stringify(this.map.tiles);
-        this.path_segments = JSON.stringify(this.path.segments);
+        this.path_segmmap = JSON.stringify(this.path.segmap);
         this.best_pos = [...this.path.best_pos];
         this.unreached_waypoints = [...this.maze.unreached_waypoints];
         this.reached_checkpoints = [...this.path.reached_checkpoints];
@@ -16,7 +16,7 @@ export class Checkpoint {
 
     restore() {
         this.map.tiles = JSON.parse(this.map_tiles);
-        this.path.segments = JSON.parse(this.path_segments);
+        this.path.segmap = JSON.parse(this.path_segmmap);
         this.path.best_pos = [...this.best_pos];
         this.map.maze.unreached_waypoints = [...this.unreached_waypoints];
         this.path.reached_checkpoints = [...this.reached_checkpoints];

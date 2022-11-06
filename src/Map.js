@@ -115,6 +115,15 @@ export class Map {
         return null;
     }
 
+    get_heuristic_dist(sx, sy, gx, gy) {
+        if(this.maze) {
+            return this.maze.get_travel_dist(sx, sy, gx, gy);
+        }
+        else {
+            return Math.abs(gx - sx) + Math.abs(gy - sy);
+        }
+    }
+
     euclidean_dist(fromx, fromy) {
         return Math.sqrt(
             (fromx - this.goal[0]) ** 2 +

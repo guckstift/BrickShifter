@@ -10,7 +10,6 @@ export class Maze {
         let [gx, gy] = goal;
 
         this.maze = maze;
-        this.corners = corners;
         this.width = width;
         this.height = height;
 
@@ -129,6 +128,67 @@ export class Maze {
             }
         });
         this.unreached_waypoints = waypoints;
+        this.pathmap = pathmap;
+    }
+
+    get_travel_dist(sx, sy, gx, gy) {
+        let [vsx, vsy] = [
+            Math.floor((sx-1) / 7),
+            Math.floor((sy-1) / 7),
+        ];
+
+        let [vgx, vgy] = [
+            Math.floor((gx-1) / 7),
+            Math.floor((gy-1) / 7),
+        ];
+
+        let dist = 0;
+        let [vcx,vcy] = [vgx, vgy];
+        let [cx,cy] = [gx, gy];
+
+        while(vcx !== vsx || vcy !== vsy) {
+            let next = this.pathmap[vcy][vcx];
+
+            if(next === null) {
+                break;
+            }
+
+            let [nvcx,nvcy] = next;
+            let delta = 0;
+
+            if(vcx < nvcx) {
+                delta = 7 - (cx-1) % 7;
+                cx += delta;
+            }
+            else if(vcx > nvcx) {
+                delta = - (cx-1) % 7 - 1;
+                cx += delta;
+            }
+
+            if(vcy < nvcy) {
+                delta = 7 - (cy-1) % 7;
+                cy += delta;
+            }
+            else if(vcy > nvcy) {
+                delta = - (cy-1) % 7 - 1;
+                cy += delta;
+            }
+
+            [vcx,vcy] = [nvcx,nvcy];
+            dist += Math.abs(delta);
+        }
+
+        if(cx !== sx || cy !== sy) {
+            dist += Math.abs(sx - cx) + Math.abs(sy - cy);
+        }
+
+        // let normal_dist = Math.abs(gx - sx) + Math.abs(gy - sy);
+        // console.log(dist, normal_dist);
+        // if(dist !== normal_dist) {
+        //     debugger;
+        // }
+
+        return dist;
     }
 
     reach_waypoint_at(x, y) {
