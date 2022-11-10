@@ -37,6 +37,7 @@ let particles = new Particles(16, 2000);
 let arrows = new Arrows();
 let map = null;
 let path = null;
+let mouse_down = false;
 let mouse_start_x = 0;
 let mouse_start_y = 0;
 let panning = false;
@@ -50,6 +51,111 @@ retry_button.onclick = retryclick;
 goback_button.onclick = gobackclick;
 start_level();
 requestAnimationFrame(frame);
+
+function reset_mouse_states()
+{
+    mouse_down = false;
+    panning = false;
+}
+
+function mousedown(e) {
+    if(e.button !== 0) {
+        return;
+    }
+
+    mouse_down = true;
+    mouse_start_x = e.clientX;
+    mouse_start_y = e.clientY;
+
+    setTimeout(() => {
+        if(mouse_down && !panning) {
+            click();
+        }
+    }, 125);
+}
+
+function mouseup(e) {
+    if(e.button !== 0) {
+        return;
+    }
+
+    if(mouse_down && !panning) {
+        click();
+    }
+
+    reset_mouse_states();
+}
+
+function mousemove(e) {
+    if(mouse_down) {
+        let dx = e.clientX - mouse_start_x;
+        let dy = e.clientY - mouse_start_y;
+
+        if(Math.sqrt(dx**2 + dy**2) >= 32) {
+            panning = true;
+        }
+    }
+    if(panning) {
+        camera.target[0] -= e.clientX - mouse_start_x;
+        camera.target[1] -= e.clientY - mouse_start_y;
+        mouse_start_x = e.clientX;
+        mouse_start_y = e.clientY;
+    }
+    else if(level_completed) {
+        selector.disable();
+        picker.disable();
+        arrows.disable();
+    }
+    else {
+        let x = e.clientX;
+        let y = e.clientY;
+        let wx = x + camera.x;
+        let wy = y + camera.y;
+        let tx = Math.floor(wx / 64);
+        let ty = Math.floor(wy / 64);
+
+        if(map.is_selectable(tx, ty)) {
+            picker.place(tx, ty);
+        }
+        else {
+            picker.disable();
+        }
+
+        if(picker.enabled && selector.enabled && pickers_adjacent()) {
+            arrows.place_between(
+                [picker.x, picker.y],
+                [selector.x, selector.y]
+            );
+        }
+        else {
+            arrows.disable();
+        }
+    }
+}
+
+function click() {
+    if(picker.enabled) {
+        if(selector.enabled && pickers_adjacent()) {
+            if(try_swap()) {
+                arrows.disable();
+            }
+            else {
+                play_sound(snd_nope);
+                arrows.set_invalid();
+            }
+        }
+        else {
+            selector.place(picker.x, picker.y);
+            play_sound(snd_click);
+            arrows.disable();
+        }
+
+        reset_mouse_states();
+    }
+    else {
+        selector.disable();
+    }
+}
 
 function start_level() {
     let level_data = levels[level_number - 1];
@@ -75,6 +181,7 @@ async function complete_level() {
     selector.disable();
     picker.disable();
     arrows.disable();
+    target_to_block(...map.goal);
 }
 
 function nextclick(e) {
@@ -95,7 +202,9 @@ function gobackclick(e) {
     e.stopPropagation();
 
     if(path.reached_checkpoints.length) {
-        path.reached_checkpoints.pop().restore();
+        let cp = path.reached_checkpoints.pop();
+        cp.restore();
+        target_to_block(cp.waypoint[0] * 7 + 4, cp.waypoint[1] * 7 + 4);
     }
 }
 
@@ -203,87 +312,9 @@ function try_swap() {
     return true;
 }
 
-function mousedown(e) {
-    if(e.button === 0) {
-        left_mousedown(e);
-    }
-    else if(e.button === 2) {
-        right_mousedown(e);
-    }
-    else if(e.button === 1) {
-        pop_tiles([[picker.x, picker.y]]);
-    }
-}
-
-function left_mousedown(e) {
-    if(picker.enabled) {
-        if(selector.enabled && pickers_adjacent()) {
-            if(try_swap()) {
-                arrows.disable();
-            }
-            else {
-                play_sound(snd_nope);
-                arrows.set_invalid();
-            }
-        }
-        else {
-            selector.place(picker.x, picker.y);
-            play_sound(snd_click);
-            arrows.disable();
-        }
-    }
-    else {
-        selector.disable();
-    }
-}
-
-function right_mousedown(e) {
-    mouse_start_x = e.clientX;
-    mouse_start_y = e.clientY;
-    panning = true;
-}
-
-function mouseup(e) {
-    panning = false;
-}
-
-function mousemove(e) {
-    if(panning) {
-        camera.target[0] -= e.clientX - mouse_start_x;
-        camera.target[1] -= e.clientY - mouse_start_y;
-        mouse_start_x = e.clientX;
-        mouse_start_y = e.clientY;
-    }
-    else if(level_completed) {
-        selector.disable();
-        picker.disable();
-        arrows.disable();
-    }
-    else {
-        let x = e.clientX;
-        let y = e.clientY;
-        let wx = x + camera.x;
-        let wy = y + camera.y;
-        let tx = Math.floor(wx / 64);
-        let ty = Math.floor(wy / 64);
-
-        if(map.is_selectable(tx, ty)) {
-            picker.place(tx, ty);
-        }
-        else {
-            picker.disable();
-        }
-
-        if(picker.enabled && selector.enabled && pickers_adjacent()) {
-            arrows.place_between(
-                [picker.x, picker.y],
-                [selector.x, selector.y]
-            );
-        }
-        else {
-            arrows.disable();
-        }
-    }
+function target_to_block(x, y) {
+    camera.target[0] = x * 64 - canvas.width / 2 + 32;
+    camera.target[1] = y * 64 - canvas.height / 2 + 32;
 }
 
 async function load_sound(url) {
